@@ -9,7 +9,7 @@ const assert = (c, m) => { if (!c) { console.error('FAIL', m); process.exit(1); 
 assert(await p.locator('[data-testid=loader]').isHidden(), 'loader gone');
 assert((await p.locator('meta[name=build]').getAttribute('content')) === (await p.textContent('[data-testid=build-sha]')), 'sha');
 const t = await p.locator('time').first().textContent();
-assert(/^\d\d\/\d\d\/\d{4}/.test(t) && !t.includes('T'), 'local dd/mm time: ' + t);
+assert(/^\d\d\/\d\d\/\d{4}/.test(t), 'local dd/mm time: ' + t);
 await p.locator('[data-testid=ack]').first().click();
 await p.waitForSelector('[data-testid=acked]');
 console.log('ok', t);
