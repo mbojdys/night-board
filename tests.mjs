@@ -11,6 +11,10 @@ assert((await p.locator('meta[name=build]').getAttribute('content')) === (await 
 const t = await p.locator('time').first().textContent();
 assert(/^\d\d\/\d\d\/\d{4}/.test(t), 'local dd/mm time: ' + t);
 await p.locator('[data-testid=ack]').first().click();
+const cid = await p.getAttribute('[data-testid=confirm]', 'data-id');
+assert((await p.textContent('[data-testid=confirm]')).includes(cid), 'confirm names id');
+assert(await p.locator('[data-testid=acked]').count() === 0, 'no ack before confirm');
+await p.click('[data-testid=confirm-ack]');
 await p.waitForSelector('[data-testid=acked]');
 console.log('ok', t);
 await b.close();

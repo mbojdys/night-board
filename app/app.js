@@ -64,13 +64,38 @@ async function refresh() {
   }
 }
 
-list.addEventListener('click', async (e) => {
+const confirmBox = document.querySelector('[data-testid="confirm"]');
+const confirmText = document.querySelector('[data-testid="confirm-text"]');
+const confirmAck = document.querySelector('[data-testid="confirm-ack"]');
+const confirmCancel = document.querySelector('[data-testid="confirm-cancel"]');
+let target = null;
+
+function closeConfirm() {
+  target = null;
+  confirmBox.hidden = true;
+}
+
+// The confirm holds the incident id picked at click time, so later list changes do not retarget it.
+list.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-testid="ack"]');
   if (!btn) return;
-  const id = btn.closest('[data-testid="incident-row"]').dataset.id;
-  if (pending.has(id)) return;
+  const row = btn.closest('[data-testid="incident-row"]');
+  target = row.dataset.id;
+  const i = latest.find((x) => x.id === target);
+  confirmText.textContent = `Ack ${target}${i ? ` (${i.service} · ${i.region} · ${i.summary})` : ''}?`;
+  confirmBox.dataset.id = target;
+  confirmBox.hidden = false;
+  confirmAck.focus();
+});
+
+confirmCancel.addEventListener('click', closeConfirm);
+
+confirmAck.addEventListener('click', async () => {
+  const id = target;
+  if (!id || pending.has(id)) return;
   pending.add(id);
-  btn.disabled = true;
+  closeConfirm();
+  render(latest);
   try {
     await ack(id);
     acked.add(id);
