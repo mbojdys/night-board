@@ -27,26 +27,57 @@ function localTime(iso) {
   return Number.isNaN(d.getTime()) ? iso : timeFormat.format(d);
 }
 
-function rowHtml(i) {
-  const done = acked.has(i.id);
-  return `<li data-testid="incident-row" data-id="${esc(i.id)}" class="row ${esc(i.severity)}">
-        <span class="id">${esc(i.id)}</span>
+const rowEls = new Map();
+
+function createRow(i) {
+  const li = document.createElement('li');
+  li.setAttribute('data-testid', 'incident-row');
+  li.dataset.id = i.id;
+  li.className = `row ${i.severity}`;
+  li.innerHTML = `<span class="id">${esc(i.id)}</span>
         <span class="sev">${esc(i.severity)}</span>
         <span class="what">${esc(i.service)} · ${esc(i.region)} · ${esc(i.summary)}</span>
-        <time datetime="${esc(i.openedAt)}">${esc(localTime(i.openedAt))}</time>
-        ${
-          done
-            ? '<span data-testid="acked" class="acked">✓ acked</span>'
-            : `<button type="button" data-testid="ack" class="ack"${pending.has(i.id) ? ' disabled' : ''}>Ack</button>`
-        }
-      </li>`;
+        <time datetime="${esc(i.openedAt)}"></time>
+        <span class="action"></span>`;
+  return li;
+}
+
+function syncRow(li, i) {
+  const time = li.querySelector('time');
+  const text = localTime(i.openedAt);
+  if (time.dateTime !== i.openedAt) time.dateTime = i.openedAt;
+  if (time.textContent !== text) time.textContent = text;
+  const state = acked.has(i.id) ? 'acked' : pending.has(i.id) ? 'pending' : 'open';
+  const action = li.querySelector('.action');
+  if (action.dataset.state === state) return;
+  action.dataset.state = state;
+  action.innerHTML =
+    state === 'acked'
+      ? '<span data-testid="acked" class="acked">✓ acked</span>'
+      : `<button type="button" data-testid="ack" class="ack"${state === 'pending' ? ' disabled' : ''}>Ack</button>`;
 }
 
 let latest = [];
 
+// Rows are kept and updated in place; only new incidents are inserted (at the top), so rows never get rebuilt under the pointer.
 function render(incidents) {
   latest = incidents;
-  list.innerHTML = incidents.map(rowHtml).join('');
+  const ids = new Set(incidents.map((i) => i.id));
+  for (const [id, li] of rowEls) {
+    if (!ids.has(id)) {
+      li.remove();
+      rowEls.delete(id);
+    }
+  }
+  incidents.forEach((i, idx) => {
+    let li = rowEls.get(i.id);
+    if (!li) {
+      li = createRow(i);
+      rowEls.set(i.id, li);
+    }
+    syncRow(li, i);
+    if (list.children[idx] !== li) list.insertBefore(li, list.children[idx] ?? null);
+  });
   empty.hidden = incidents.length > 0;
 }
 
